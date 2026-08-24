@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>glTF WebXR Viewer</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #202020; }
+    #info {
+      position: absolute; top: 10px; width: 100%; text-align: center;
+      color: white; font-family: sans-serif; z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Loading model…</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+    const info = document.getElementById('info');
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x202020);
+
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
+    camera.position.set(0, 1.6, 3);
+
+    // Rig so we can move the camera around in VR (moving camera directly doesn't work well in WebXR)
+    const cameraRig = new THREE.Group();
+    cameraRig.add(camera);
+    scene.add(cameraRig);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    // Lighting
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(3, 10, 5);
+    scene.add(dirLight);
+
+    // Ground grid for spatial reference
+    const grid = new THREE.GridHelper(20, 20, 0x555555, 0x333333);
+    scene.add(grid);
+
+    // Load your glTF model — CHANGE THIS PATH
+    const loader = new GLTFLoader();
+    loader.load(
+      './house.gltf',
+    (gltf) => {
+        gltf.scene.rotation.x = -Math.PI / 2;
+        scene.add(gltf.scene);
+        info.textContent = '';
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const pct = Math.round((xhr.loaded / xhr.total) * 100);
+          info.textContent = `Loading model… ${pct}%`;
+        }
+      },
+      (error) => {
+        info.textContent = 'Error loading model — check console';
+        console.error(error);
+      }
+    );
+
+    // --- Desktop fallback controls (mouse drag to look, WASD to move) ---
+    let yaw = 0, pitch = 0;
+    let isDragging = false, lastX = 0, lastY = 0;
+    renderer.domElement.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      yaw -= (e.clientX - lastX) * 0.005;
+      pitch -= (e.clientY - lastY) * 0.005;
+      pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+      camera.rotation.set(pitch, yaw, 0, 'YXZ');
+      lastX = e.clientX; lastY = e.clientY;
+    });
+    const keys = {};
+    window.addEventListener('keydown', (e) => keys[e.code] = true);
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    // --- VR thumbstick locomotion ---
+    function handleVRMovement() {
+      const session = renderer.xr.getSession();
+      if (!session) return;
+      for (const source of session.inputSources) {
+        if (!source.gamepad || !source.handedness) continue;
+        const axes = source.gamepad.axes; // [x, y] or [touchpadX, touchpadY, thumbX, thumbY]
+        const x = axes.length >= 4 ? axes[2] : axes[0];
+        const y = axes.length >= 4 ? axes[3] : axes[1];
+        if (Math.abs(x) < 0.15 && Math.abs(y) < 0.15) continue;
+
+        if (source.handedness === 'left') {
+          // Left stick: move relative to where the headset is facing
+          const dir = new THREE.Vector3();
+          camera.getWorldDirection(dir);
+          dir.y = 0; dir.normalize();
+          const strafe = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).negate();
+          cameraRig.position.addScaledVector(dir, -y * 0.05);
+          cameraRig.position.addScaledVector(strafe, x * 0.05);
+        } else if (source.handedness === 'right') {
+          // Right stick: snap turn
+          if (Math.abs(x) > 0.7 && !source._turned) {
+            cameraRig.rotateY(x > 0 ? -Math.PI / 8 : Math.PI / 8);
+            source._turned = true;
+          } else if (Math.abs(x) < 0.3) {
+            source._turned = false;
+          }
+        }
+      }
+    }
+
+    function handleDesktopMovement() {
+      const speed = 0.08;
+      const dir = new THREE.Vector3();
+      camera.getWorldDirection(dir);
+      dir.y = 0; dir.normalize();
+      const strafe = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).negate();
+      if (keys['KeyW']) camera.position.addScaledVector(dir, speed);
+      if (keys['KeyS']) camera.position.addScaledVector(dir, -speed);
+      if (keys['KeyA']) camera.position.addScaledVector(strafe, -speed);
+      if (keys['KeyD']) camera.position.addScaledVector(strafe, speed);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    renderer.setAnimationLoop(() => {
+      if (renderer.xr.isPresenting) {
+        handleVRMovement();
+      } else {
+        handleDesktopMovement();
+      }
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>
