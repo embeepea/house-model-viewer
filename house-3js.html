@@ -9,6 +9,9 @@
       position: absolute; top: 10px; width: 100%; text-align: center;
       color: white; font-family: sans-serif; z-index: 1;
     }
+    #VRButton {
+	opacity: 1 !important;
+    }
   </style>
 </head>
 <body>
@@ -47,7 +50,15 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
     document.body.appendChild(renderer.domElement);
-    document.body.appendChild(VRButton.createButton(renderer));
+    const vrButton = VRButton.createButton(renderer);
+    document.body.appendChild(vrButton);
+    // Style overrides for visibility
+    vrButton.style.background = 'rgba(0, 0, 0, 1.0)';
+    vrButton.opacity = '1';
+    vrButton.style.color = '#ff3300';
+    vrButton.style.border = '2px solid #ff3300';
+    vrButton.style.fontWeight = 'bold';
+    vrButton.style.fontSize = '16px';
 
     // Lighting
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
