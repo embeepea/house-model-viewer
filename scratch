@@ -1,0 +1,58 @@
+////////////////////////////////////////////////////////////////////////////////
+
+function createAxisLines(length) {
+  const half = length / 2;
+  // prettier-ignore
+  const positions = new Float32Array([
+    -half, 0, 0,   half, 0, 0,  // X
+    0, -half, 0,   0, half, 0,  // Y
+    0, 0, -half,   0, 0, half,  // Z
+  ]);
+  // prettier-ignore
+  const colors = new Float32Array([
+    1, 0, 0,   1, 0, 0,  // X: red
+    0, 1, 0,   0, 1, 0,  // Y: green
+    0, 0, 1,   0, 0, 1,  // Z: blue
+  ]);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const material = new THREE.LineBasicMaterial({ vertexColors: true });
+  return new THREE.LineSegments(geometry, material);
+}
+
+function createAxisCones(axisLength) {
+  const half = axisLength / 2;
+  const coneGeometry = new THREE.ConeGeometry(AXIS_CONE_RADIUS, AXIS_CONE_HEIGHT, 16);
+
+  const axisSpecs = [
+    { color: 0xff0000, tip: new THREE.Vector3(half, 0, 0), rotation: new THREE.Euler(0, 0, -Math.PI / 2) },
+    { color: 0x00ff00, tip: new THREE.Vector3(0, half, 0), rotation: new THREE.Euler(0, 0, 0) },
+    { color: 0x0000ff, tip: new THREE.Vector3(0, 0, half), rotation: new THREE.Euler(Math.PI / 2, 0, 0) },
+  ];
+
+  const group = new THREE.Group();
+  for (const { color, tip, rotation } of axisSpecs) {
+    const cone = new THREE.Mesh(coneGeometry, new THREE.MeshBasicMaterial({ color }));
+    cone.rotation.copy(rotation);
+    // Cone geometry is centered on its own axis, apex at +height/2 locally, so
+    // shift it outward by half its height to sit base-first at the line's tip.
+    const outward = tip.clone().normalize();
+    cone.position.copy(tip).addScaledVector(outward, AXIS_CONE_HEIGHT / 2);
+    group.add(cone);
+  }
+  return group;
+}
+
+function createAxes(length) {
+  const group = new THREE.Group();
+  group.name = 'axes';
+  group.add(createAxisLines(length));
+  group.add(createAxisCones(length));
+  return group;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+

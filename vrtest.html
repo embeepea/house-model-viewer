@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>glTF WebXR Viewer</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #202020; }
+    #info {
+      position: absolute; top: 10px; width: 100%; text-align: center;
+      color: white; font-family: sans-serif; z-index: 1;
+    }
+    #VRButton {
+	opacity: 1 !important;
+    }
+  </style>
+</head>
+<body>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module" src="vrtest.js"></script>
+</body>
+</html>
