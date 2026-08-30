@@ -14,9 +14,15 @@ function inch(i) {
 
 
 const INITIAL_CAMERA_POSITION = new THREE.Vector2(0, -30)
-const INITIAL_EYE_HEIGHT = ft(5,4)
+
+//const INITIAL_EYE_HEIGHT = ft(5,4)
+
+// for lower level:
+const INITIAL_EYE_HEIGHT = -ft(10) + ft(5,4)
+
 
 const ENABLE_HUD = false
+const ENABLE_FLOOR_GRID = false
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -158,12 +164,14 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(3, 10, 5);
 scene.add(dirLight);
 
-// Ground grid for spatial reference
-const grid = new THREE.GridHelper(140, 140, 0x555555, 0x333333);
-// THREE.GridHelper returns a grid in the x-z plane.  Rotate 90 deg around x axis
-// to get it into the x-y plane.
-grid.rotation.x = -Math.PI / 2;
-scene.add(grid);
+if (ENABLE_FLOOR_GRID) {
+    // Ground grid for spatial reference
+    const grid = new THREE.GridHelper(140, 140, 0x555555, 0x333333);
+    // THREE.GridHelper returns a grid in the x-z plane.  Rotate 90 deg around x axis
+    // to get it into the x-y plane.
+    grid.rotation.x = -Math.PI / 2;
+    scene.add(grid);
+}
 
 const loader = new GLTFLoader();
 loader.load(
@@ -240,8 +248,10 @@ function handleVRMovement() {
 		continue;
 	    }
 
-	    cameraRigPosition.addScaledVector(forwardDir, -y*0.05);
-	    cameraRigPosition.addScaledVector(rightDir, x*0.05);
+	    const n = Math.sqrt(x*x + y*y);
+	    const s = 0.05 + n*0.1
+	    cameraRigPosition.addScaledVector(forwardDir, -y*s);
+	    cameraRigPosition.addScaledVector(rightDir, x*s);
 	    updateCameraRig();
 	} else if (source.handedness === 'right') {
 	    hudMessage += `right: [${x.toFixed(4)}, ${y.toFixed(4)}]\n`;
