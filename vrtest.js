@@ -254,7 +254,16 @@ function handleVRMovement() {
 	    cameraRigPosition.addScaledVector(rightDir, x*s);
 	    updateCameraRig();
 	} else if (source.handedness === 'right') {
-	    hudMessage += `right: [${x.toFixed(4)}, ${y.toFixed(4)}]\n`;
+	    const buttons = source.gamepad.buttons;
+	    const aPressed = buttons[4].pressed;
+	    const bPressed = buttons[5].pressed;
+	    if (aPressed) {
+		cameraRigPosition.addScaledVector(new THREE.Vector3(0,0,1), 0.05);
+		continue;
+	    } else if (bPressed) {
+		cameraRigPosition.addScaledVector(new THREE.Vector3(0,0,1), -0.05);
+		continue;
+	    }
 
 	    cameraRigZRotation += -x * Math.PI/200;
 	    updateCameraRig();
